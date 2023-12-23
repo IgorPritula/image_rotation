@@ -11,6 +11,7 @@ include_directories(3rdParty)
 
 add_executable(ImageRotation
     main.cpp
+    rotate.cpp
 )
 
 install(TARGETS ImageRotation

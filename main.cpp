@@ -1,93 +1,55 @@
 #include <iostream>
-#include <math.h>
-#include <algorithm>
+#include <vector>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "3rdParty/stb_image.h"
 #include "3rdParty/stb_image_write.h"
+#include "rotate.h"
 
-#define PI 3.14159265
-
-void rotate(unsigned char* srcImg, int srcWidth, int srcHeight,
-            double theta, unsigned char*& dstImg,
-            int& dstWidth, int& dstHeight, int comp = 4);
+struct RotateSettings 
+{
+    std::string src;
+    std::string dst;
+    double angle;
+    RT::Pixel defPixel;
+};
 
 int main()
 {
-    const char* img_source = "res/32bit.png";
-    const double angle = 200;
+    std::vector<RotateSettings> images;
+    images.push_back({"res/32bit.png", "res/32bit_rotated.png", 200, {0, 0, 0, 255}});
+    images.push_back({"res/24bit.png", "res/24bit_rotated.png", 45, {255, 255, 255, 255}});
+    images.push_back({"res/transparency.png", "res/transparency_rotated.png", 160, {0, 0, 0, 0}});
 
-    int width, height, comp;
-    unsigned char* srcImg = stbi_load(img_source, &width, &height, &comp, 0);
-    if (!srcImg)
+    for (const auto& image : images) 
     {
-        std::cout << "Failed to load image: " << img_source << std::endl;
-        return 1;
+        int width, height, comp;
+        unsigned char* srcImg = stbi_load(image.src.c_str(), &width, &height, &comp, 0);
+        if (!srcImg)
+        {
+            std::cout << "Failed to load image: " << image.src.c_str() << std::endl;
+            continue;
+        }
+
+        unsigned char* dstImg = nullptr;
+        int dstWidth, dstHeight;
+        RT::setDefaultPixel(image.defPixel);
+        RT::rotate(srcImg, width, height, image.angle, dstImg, dstWidth, dstHeight, comp);
+
+        if (!dstImg)
+        {
+            std::cout << "Failed to rotate image: " << image.src.c_str() << std::endl;
+            stbi_image_free(srcImg);
+            continue;
+        }
+
+        stbi_write_png(image.dst.c_str(), dstWidth, dstHeight, comp, dstImg, comp*dstWidth);
+
+        stbi_image_free(srcImg);
+        delete[] dstImg;
     }
-
-    unsigned char* dstImg = nullptr;
-    int widthR, heightR;
-    rotate(srcImg, width, height, angle, dstImg, widthR, heightR, comp);
-
-    if (!dstImg)
-    {
-        std::cout << "Failed to rotate image" << std::endl;
-        return 2;
-    }
-
-    stbi_write_png( "res/32bit_rotated.png", widthR, heightR, comp, dstImg, comp*widthR);
-
-    stbi_image_free(srcImg);
-    delete[] dstImg;
 
     std::cout << "Rotation completed successfully." << std::endl;
     return 0;
-}
-
-/**
-* Rotate image.
-* Memory allocation for the destination image is managed inside.
-*/
-void rotate(unsigned char* srcImg, int srcWidth, int srcHeight,
-            double theta, unsigned char*& dstImg,
-            int& dstWidth, int& dstHeight, int comp)
-{
-    double rads = theta * (PI / 180);
-    float cs = cos(rads);
-    float ss = sin(rads);
-
-    float xCenter = (float)(srcWidth)/2.0;
-    float yCenter = (float)(srcHeight)/2.0;
-
-    // Calculate new image dimensions
-    dstWidth = ceil(fabs(srcWidth * cs) + fabs(srcHeight * ss));
-    dstHeight = ceil(fabs(srcHeight * cs) + fabs(srcWidth * ss));
-
-    dstImg = new unsigned char[dstHeight * dstWidth * comp];
-    if (!dstImg)
-        return;
-
-    int dstHalfWidth = dstWidth / 2;
-    int dstHalfHeight = dstHeight / 2;
-    unsigned char defPixel[] = {0, 0, 0, 255};
-    for (int y = 0; y < dstHeight; ++y) {
-        for (int x = 0; x < dstWidth; ++x) {
-
-            int srcX = static_cast<int>(cs*((float)(x)-dstHalfWidth) + ss*((float)(y)-dstHalfHeight) + xCenter);
-            int srcY = static_cast<int>(-ss*((float)(x)-dstHalfWidth) + cs*((float)(y)-dstHalfHeight) + yCenter);
-
-            int dstIndex = (dstWidth * y * comp) + (x * comp);
-            if (srcY >= 0 && srcY < srcHeight && srcX >= 0 && srcX < srcWidth)
-            {
-                int srcIndex = (srcWidth * srcY * comp) + (srcX * comp);
-                memcpy(&dstImg[dstIndex], &srcImg[srcIndex], comp);
-            }
-            else 
-            {
-                memcpy(&dstImg[dstIndex], &defPixel, comp);
-            }
-        }
-    }
-
 }
