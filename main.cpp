@@ -51,5 +51,7 @@ int main()
     }
 
     std::cout << "Rotation completed successfully." << std::endl;
+    std::cout << "Press Enter to Continue" << std::endl;
+    std::cin.ignore();
     return 0;
 }
